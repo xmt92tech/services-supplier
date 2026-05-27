@@ -1,3 +1,21 @@
+// const jwt = require("jsonwebtoken");
+
+// module.exports = function (req, res, next) {
+//   const authHeader = req.headers["authorization"];
+//   if (!authHeader) return res.status(401).json({ error: "missing_auth_header" });
+
+//   const token = authHeader.split(" ")[1];
+//   if (!token) return res.status(401).json({ error: "missing_token" });
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     req.user = decoded; // attach user info
+//     next();
+//   } catch (err) {
+//     return res.status(403).json({ error: "invalid_or_expired_token" });
+//   }
+// };
+
 const jwt = require("jsonwebtoken");
 
 module.exports = function (req, res, next) {
@@ -9,9 +27,17 @@ module.exports = function (req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // attach user info
+
+    // Attach user info to request for downstream controllers
+    req.user = {
+      userId: decoded.userId,
+      tenantId: decoded.tenantId,
+      role: decoded.role
+    };
+
     next();
   } catch (err) {
-    return res.status(403).json({ error: "invalid_or_expired_token" });
+    return res.status(401).json({ error: "invalid_or_expired_token" });
   }
 };
+
