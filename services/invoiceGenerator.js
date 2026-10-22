@@ -342,6 +342,7 @@
 const PDFDocument = require("pdfkit");
 const fetch = require("node-fetch");
 const sharp = require("sharp");
+const path = require("path");
 
 let cachedLogoBuffer = null;
 let cacheKey = null;
@@ -350,6 +351,16 @@ function generateInvoice(invoice) {
   return new Promise(async (resolve, reject) => {
     let buffers = [];
     let doc = new PDFDocument({ margin: 50 });
+
+    doc.registerFont(
+      "Regular",
+      path.join(process.cwd(), "fonts", "NotoSansSC-Regular.ttf")
+    );
+
+    doc.registerFont(
+      "Bold",
+      path.join(process.cwd(), "fonts", "NotoSansSC-Bold.ttf")
+    );
 
     doc.on("data", buffers.push.bind(buffers));
     doc.on("end", () => {
@@ -519,18 +530,19 @@ function generateInvoice(invoice) {
       await drawCompanyLogo(doc, invoice, "logo");
 
       doc
-        .fontSize(20)
+        .fontSize(16)
+        .font("Helvetica-Bold")
         .fillColor("#000000")
-        .text(invoice.company.name, 120, 50)
+        .text(invoice.company.name, 120, 55)
         .fontSize(10)
         .text("(" + invoice.company.tax_number + ")", 120, 75)
-        .text(invoice.company.address, 120, 90);
+        .text(invoice.company.address, 120, 90, { width: 300 });
 
       if (invoice.company.phone) {
-        doc.text(`Tel: ${invoice.company.phone}`, 120, 105);
+        doc.text(`Tel: ${invoice.company.phone}`, 120, 115);
       }
       if (invoice.company.email) {
-        doc.text(`Email: ${invoice.company.email}`, 120, 120);
+        doc.text(`Email: ${invoice.company.email}`, 120, 128);
       }
 
       let z = 65;
@@ -572,8 +584,8 @@ function generateInvoice(invoice) {
       doc.fontSize(12).font("Helvetica-Bold").text("Bill To:", 50, 150);
 
       doc
-        .font("Helvetica-Bold")
-        .text(invoice.customer.name, 100, 150, { width: 250 })
+        .font("Bold")
+        .text(invoice.customer.name, 100, 145, { width: 250 })
         .font("Helvetica")
         .text(invoice.customer.address, 100, 165, { width: 350 });
 
@@ -619,7 +631,7 @@ function generateInvoice(invoice) {
       });
       const rowHeightDynamic = Math.max(rowHeight, nameHeight, descHeight + 10);
 
-      doc
+      doc.font("Regular")
         .text(i + 1, noX + 5, y + 5, { width: itemX - noX - 5 }) // index column
         .text(item.name, itemX, y + 5, { width: descX - itemX - 5 }) // item name
         .text(item.description, descX, y + 5, {
@@ -627,8 +639,8 @@ function generateInvoice(invoice) {
           continued: false,
         })
         .text(item.quantity, qtyX, y + 5, { width: priceX - qtyX - 5 })
-        .text(`$${item.price.toFixed(2)}`, priceX, y + 5, { width: totalX - priceX - 5 })
-        .text(`$${(item.quantity * item.price).toFixed(2)}`, totalX, y + 5);
+        .text(`RM ${item.price.toFixed(2)}`, priceX, y + 5, { width: totalX - priceX - 5 })
+        .text(`RM ${(item.quantity * item.price).toFixed(2)}`, totalX, y + 5);
 
       y += rowHeightDynamic;
     }
@@ -651,9 +663,16 @@ function generateInvoice(invoice) {
 
     doc.moveTo(noX, y + 10).lineTo(noX + tableWidth, y + 10).strokeColor("#000000").stroke();
 
+    //check amount for extend width
+    const amount = grandTotal.toFixed(2);
+    // Remove the decimal point to count only digits
+    const digitCount = amount.replace(".", "").length;
+    const widthlg = digitCount > 8 ? 120 : 0;
+    const adjustXpos = digitCount > 8 ? 0 : 15;
+
     let offset = y + 20;
     doc.font("Helvetica").fontSize(12);
-    doc.text("Subtotal:", qtyX, offset).text(`$${subtotal.toFixed(2)}`, totalX, offset);
+    doc.text("Subtotal:", qtyX, offset).text(`RM ${subtotal.toFixed(2)}`, totalX-adjustXpos, offset, {width:widthlg});
     offset += 15;
 
     if (invoice.customer.discount_rate) {
@@ -668,7 +687,7 @@ function generateInvoice(invoice) {
 
     const grandTotalY = offset;
     doc.rect(qtyX, grandTotalY, noX + tableWidth - qtyX, 20).fill("#eeeeee");
-    doc.font("Helvetica-Bold").fillColor("#000000").text("Grand Total:", qtyX, grandTotalY + 5).text(`$${grandTotal.toFixed(2)}`, totalX, grandTotalY + 5);
+    doc.font("Helvetica-Bold").fillColor("#000000").text("Grand Total:", qtyX, grandTotalY + 5).text(`RM ${grandTotal.toFixed(2)}`, totalX-adjustXpos, grandTotalY + 5, {width:widthlg});
 
     // Last Footer (final page)
     drawFooter(doc, currentPage, totalPages);
