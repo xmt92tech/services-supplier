@@ -675,7 +675,7 @@ function generateInvoice(invoice) {
     doc.text("Subtotal:", qtyX, offset).text(`RM ${subtotal.toFixed(2)}`, totalX-adjustXpos, offset, {width:widthlg});
     offset += 15;
 
-    if (invoice.customer.discount_rate) {
+    if (invoice.customer.discount_rate > 0) {
       doc.text(`Discount (${(invoice.customer.discount_rate * 100).toFixed(0)}%):`, qtyX, offset).text(`-$${discount.toFixed(2)}`, totalX, offset);
       offset += 15;
     }
