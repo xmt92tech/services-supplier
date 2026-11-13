@@ -28,12 +28,23 @@ exports.createInvoice = async (req, res) => {
   if (!tenantId) return res.status(401).json({ error: "Tenant not found in token" });
 
   // check on subscription details valid
-  await validateSubscription(pool, tenantId, "company", res);
+  const subscription = await validateSubscription(pool, tenantId, "company", res);
+
+
 
   const client = await pool.connect();
+  let transactionStarted = false;
 
   try {
     await client.query("BEGIN");
+    transactionStarted = true;
+
+    if (!subscription.valid){
+      await client.query("ROLLBACK");
+      return res.status(subscription.status).json({
+          error: subscription.error
+      });
+    }
 
     // ===== 1️⃣ Fetch Company Data =====
     const companyRes = await client.query(
@@ -45,7 +56,7 @@ exports.createInvoice = async (req, res) => {
 
     if (companyRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      client.release();
+      //client.release();
       return res.status(404).json({ error: "Company not found" });
     }
     invoiceData.company = companyRes.rows[0];
@@ -59,7 +70,7 @@ exports.createInvoice = async (req, res) => {
 
     if (customerRes.rows.length === 0) {
       await client.query("ROLLBACK");
-      client.release();
+      //client.release();
       return res.status(404).json({ error: "Customer not found" });
     }
     invoiceData.customer = customerRes.rows[0];
@@ -137,6 +148,7 @@ exports.createInvoice = async (req, res) => {
     );
 
     await client.query("COMMIT");
+    transactionStarted = false;
 
     // ===== 7️⃣ Generate PDF =====
     const pdfBuffer = await generateInvoice(invoiceData);
@@ -145,9 +157,28 @@ exports.createInvoice = async (req, res) => {
     return res.send(pdfBuffer);
 
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("Invoice creation failed:", err.stack);
-    res.status(500).json({ error: "Failed to create invoice" });
+    // await client.query("ROLLBACK");
+    // console.error("Invoice creation failed:", err.stack);
+    // res.status(500).json({ error: "Failed to create invoice" });
+
+    // console.error("Invoice creation failed:", err.stack);
+
+    if (transactionStarted) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackErr) {
+            console.error("Rollback failed:", rollbackErr);
+        }
+    }
+
+    if (res.headersSent) {
+        return;
+    }
+
+    return res.status(500).json({
+        error: "Failed to create invoice"
+    });
+
   } finally {
     client.release();
   }

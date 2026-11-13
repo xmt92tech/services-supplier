@@ -9,17 +9,29 @@ async function validateSubscription(client, tenantId, type, res) {
 
   if (!sub) {
     // throw new Error("Subscription plan details not found.");
-    return res.status(404).json({ error: "Subscription plan details not found." });
+    return {
+      valid: false,
+      status: 403,
+      error: res.status(403).json({ error: "Subscription plan details not found." })
+    };
   }
 
   if (!sub.is_active) {
     // throw new Error("Subscription is inactive. Action not allowed.");
-    return res.status(403).json({ error: "Subscription is inactive. Action not allowed." });
+    return {
+      valid: false,
+      status: 403,
+      error: res.status(403).json({ error: "Subscription is inactive. Action not allowed." })
+    };
   }
 
   if (sub.days_left <= 0) {
     // throw new Error("Subscription has expired. Action not allowed.");
-    return res.status(403).json({ error: "Subscription has been expire. Action not allowed." });
+    return {
+      valid: false,
+      status: 403,
+      error: res.status(403).json({ error: "Subscription has been expire. Action not allowed." })
+    };
   }
 
   // check limits
@@ -41,11 +53,16 @@ async function validateSubscription(client, tenantId, type, res) {
 
     if (used >= limit) {
       // throw new Error(`${type.charAt(0).toUpperCase() + type.slice(1)} limit has been reached for your plan.`);
-      return res.status(403).json({ error: `${type.charAt(0).toUpperCase() + type.slice(1)} limit has been reached for your plan.` });
+      // return res.status(403).json({ error: `${type.charAt(0).toUpperCase() + type.slice(1)} limit has been reached for your plan.` });
+      return {
+        valid: false,
+        status: 403,
+        error: res.status(403).json({ error: `${type.charAt(0).toUpperCase() + type.slice(1)} limit has been reached for your plan.` })
+      };
     }
   }
 
-  return true; // passed all checks
+  return {valid: true}; // passed all checks
 }
 
 module.exports = { getTenantSubscription, validateSubscription };
