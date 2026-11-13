@@ -10,7 +10,9 @@ const customerRoutes = require("./routes/customer");
 
 const app = express();
 app.use(bodyParser.json({ limit: "10mb" }));
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ["X-Invoice-ID"],
+}));
 
 // Routes
 app.use("/api/invoices", invoiceRoutes);

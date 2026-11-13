@@ -154,6 +154,7 @@ exports.createInvoice = async (req, res) => {
     const pdfBuffer = await generateInvoice(invoiceData);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=invoice-${invoiceNumber}.pdf`);
+    res.setHeader("X-Invoice-ID", invoiceNumber);
     return res.send(pdfBuffer);
 
   } catch (err) {
